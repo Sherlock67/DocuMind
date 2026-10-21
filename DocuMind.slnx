@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocuMind.Api/DocuMind.Api.csproj" />
+    <Project Path="src/DocuMind.Application/DocuMind.Application.csproj" />
+    <Project Path="src/DocuMind.Domain/DocuMind.Domain.csproj" />
+    <Project Path="src/DocuMind.Infrastructure/DocuMind.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DocuMind.IntegrationTests/DocuMind.IntegrationTests.csproj" />
+    <Project Path="tests/DocuMind.UnitTests/DocuMind.UnitTests.csproj" />
+  </Folder>
+</Solution>
