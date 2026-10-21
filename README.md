@@ -21,6 +21,7 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full system design.
 | Embeddings | Voyage AI `voyage-3.5` (default) or local Ollama `mxbai-embed-large` — both 1024-d |
 | Extraction | PdfPig (PDF), DocumentFormat.OpenXml (DOCX) |
 | Auth | ASP.NET Core Identity, JWT access tokens + rotating refresh tokens, rate limiting |
+| Web UI | ASP.NET Core MVC with Razor views and Bootstrap 5 — a separate app that calls the API |
 | Tests | xUnit + NSubstitute |
 
 ## Project layout
@@ -41,6 +42,11 @@ src/
   DocuMind.Infrastructure  EF Core (write + read contexts), hybrid-search T-SQL, Claude, Voyage/Ollama,
                            extractors, chunker, file storage, background ingestion worker
   DocuMind.Api             Endpoints, exception → ProblemDetails mapping, composition root
+  DocuMind.Web             ASP.NET Core MVC web app (controllers + Razor views) that calls the API
+    Controllers            Account, Projects (+members), Folders, Collections (+sharing), Documents, Admin, Audit
+    Views                  Razor .cshtml pages (Bootstrap 5); modals are plain forms posting to controllers
+    Auth/ApiSession        Sign-in cookie that keeps the API tokens server-side and refreshes them
+    Api/DocuMindApiClient  Typed HttpClient over the REST API
 tests/
   DocuMind.UnitTests
   DocuMind.IntegrationTests  Against a real SQL Server 2025 (LocalDB)
@@ -66,11 +72,21 @@ tests/
    ```
    To embed locally instead: `ollama pull mxbai-embed-large`, then set `Embeddings:Provider=Ollama`
    and `Embeddings:Model=mxbai-embed-large`.
-3. Run the API (Development applies migrations on startup):
+3. Run the API (Development applies migrations on startup) — it listens on http://localhost:5288:
    ```bash
    dotnet run --project src/DocuMind.Api
    ```
-4. Open `/scalar` for interactive docs.
+4. In a second terminal, run the web app — it listens on http://localhost:5157 and calls the API
+   at `Api:BaseUrl` in `src/DocuMind.Web/appsettings.json`:
+   ```bash
+   dotnet run --project src/DocuMind.Web
+   ```
+5. Open **http://localhost:5157** and create an account — the first account becomes Admin.
+   (In Visual Studio: *Configure Startup Projects → Multiple startup projects* → DocuMind.Api and DocuMind.Web.)
+   The API's interactive docs are at http://localhost:5288/scalar.
+
+Set `Auth:SigningKey` (step 2) even in development if you restart the API often: without it the API makes
+a throwaway key per run, so restarting it signs everyone out of the web app.
 
 ## Try it
 

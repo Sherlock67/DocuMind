@@ -1,0 +1,108 @@
+@model AuditViewModel
+@{
+    var f = Model.Filter;
+    var e = Model.Entries;
+    ViewData["Title"] = Model.Project is { } proj ? $"Audit log · {proj.Name}" : "Audit log";
+}
+
+@if (Model.Project is { } project)
+{
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small mb-2">
+            <li class="breadcrumb-item"><a href="/">Projects</a></li>
+            <li class="breadcrumb-item"><a href="/projects/@project.Id">@project.Name</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Audit log</li>
+        </ol>
+    </nav>
+}
+
+<h1 class="h3 mb-1">Audit log@(Model.Project is { } p2 ? $" — {p2.Name}" : "")</h1>
+<p class="small text-body-secondary mb-4">Uploads, deletions, document access (views, downloads, documents used in searches and AI answers), sharing changes, sign-ins and denied access. Newest first.</p>
+
+<form method="get" action="/audit" class="card shadow-sm mb-4">
+    <div class="card-body row g-2 align-items-end">
+        @if (f.ProjectId is { } pid) { <input type="hidden" name="projectId" value="@pid" /> }
+        <div class="col-12 col-md-4">
+            <label class="form-label small" for="auditAction">Action</label>
+            <input id="auditAction" name="action" value="@f.Action" class="form-control form-control-sm" list="auditActions" placeholder="e.g. document.downloaded" />
+            <datalist id="auditActions">
+                @foreach (var action in new[] { "document.uploaded", "document.deleted", "document.downloaded", "document.viewed", "document.previewed", "documents.retrieved", "access.denied", "auth.login", "auth.login_failed", "project.member_added", "collection.shared" })
+                {
+                    <option value="@action"></option>
+                }
+            </datalist>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small" for="auditOutcome">Outcome</label>
+            <select id="auditOutcome" name="succeeded" class="form-select form-select-sm">
+                <option value="">Any</option>
+                <option value="true" selected="@(f.Succeeded == true)">Succeeded</option>
+                <option value="false" selected="@(f.Succeeded == false)">Failed / denied</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small" for="auditFrom">From</label>
+            <input id="auditFrom" type="date" name="from" value="@f.From?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small" for="auditTo">To</label>
+            <input id="auditTo" type="date" name="to" value="@f.To?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+        </div>
+        <div class="col-6 col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Filter</button>
+            <a class="btn btn-sm btn-light" href="/audit@(f.ProjectId is { } p3 ? $"?projectId={p3}" : "")">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light small"><tr><th>When</th><th>Who</th><th>Action</th><th>Resource</th><th>Details</th><th>IP</th></tr></thead>
+            <tbody>
+                @if (e.Items.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-body-secondary py-4">No matching entries.</td></tr>
+                }
+                @foreach (var entry in e.Items)
+                {
+                    <tr>
+                        <td class="small text-nowrap">@entry.OccurredAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td class="small">@(entry.ActorEmail ?? "anonymous")</td>
+                        <td>
+                            <span class="badge @(entry.Succeeded ? "text-bg-light border" : "text-bg-danger")">@entry.Action</span>
+                        </td>
+                        <td class="small text-nowrap">
+                            @if (entry.ResourceType == "document" && entry.ResourceId is { } docId && entry.Action != "document.deleted")
+                            {
+                                <a href="/documents/@docId">@entry.ResourceType</a>
+                            }
+                            else
+                            {
+                                @(entry.ResourceType ?? "—")
+                            }
+                        </td>
+                        <td class="audit-details">
+                            @foreach (var (k, v) in entry.Details)
+                            {
+                                <div><code>@k</code> @(v.Length > 120 ? v[..120] + "…" : v)</div>
+                            }
+                        </td>
+                        <td class="small text-nowrap text-body-secondary">@entry.IpAddress</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white d-flex align-items-center small">
+        <span class="text-body-secondary me-auto">@e.TotalCount entries</span>
+        @if (e.TotalPages > 1)
+        {
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(e.Page <= 1 ? "disabled" : "")"><a class="page-link" href="@f.PageUrl(e.Page - 1)">Previous</a></li>
+                <li class="page-item disabled"><span class="page-link">Page @e.Page of @e.TotalPages</span></li>
+                <li class="page-item @(e.Page >= e.TotalPages ? "disabled" : "")"><a class="page-link" href="@f.PageUrl(e.Page + 1)">Next</a></li>
+            </ul>
+        }
+    </div>
+</div>

@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is string t ? $"{t} · DocuMind" : "DocuMind")</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="bg-body-tertiary">
+    @{
+        var signedIn = User.Identity?.IsAuthenticated == true;
+        var isAdmin = User.IsInRole("Admin");
+        var path = Context.Request.Path.Value ?? "/";
+    }
+    <nav class="navbar navbar-expand-md bg-white border-bottom shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+                <i class="bi bi-journal-richtext text-primary fs-4"></i> DocuMind
+            </a>
+            @if (signedIn)
+            {
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link @(path == "/" || path.StartsWith("/projects") || path.StartsWith("/documents") || path.StartsWith("/collections") ? "active" : "")" href="/">
+                                <i class="bi bi-folder2-open"></i> Projects
+                            </a>
+                        </li>
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @(path.StartsWith("/admin") ? "active" : "")" href="/admin/users"><i class="bi bi-people"></i> Users</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(path.StartsWith("/audit") ? "active" : "")" href="/audit"><i class="bi bi-shield-check"></i> Audit log</a>
+                            </li>
+                        }
+                    </ul>
+                    <div class="dropdown">
+                        <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="avatar">@string.Concat((User.Identity!.Name ?? "?").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])))</span>
+                            <span class="d-none d-lg-inline">@User.Identity!.Name</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text small text-body-secondary">@User.FindFirstValue(ClaimTypes.Email) · @User.FindFirstValue(ClaimTypes.Role)</span></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" href="/account"><i class="bi bi-person-gear"></i> Account</a></li>
+                            <li>
+                                <form method="post" action="/account/logout">
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Sign out</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            }
+        </div>
+    </nav>
+
+    <main class="container-fluid px-4 py-4">
+        <partial name="_Flash" />
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

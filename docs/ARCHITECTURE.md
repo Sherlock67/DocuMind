@@ -16,7 +16,8 @@ that answers **only from those documents** and cites the passages it used.
 | Preview, download, rename, move and delete documents; track Queued → Processing → Completed / Failed | Version history of a document |
 | Hybrid search (meaning + exact terms) over all documents | Multi-tenant (multi-organisation) isolation |
 | Grounded chat answers with inline citations `[1]` and source cards | Fine-tuning or training models |
-| Streaming answers (SSE) for a responsive UI | A frontend (the API is UI-agnostic) |
+| Streaming answers (SSE) for a responsive UI | Search / chat screens in the web app (API only for now) |
+| Server-rendered web app (MVC + Razor) for accounts, access control and document management | A JavaScript SPA |
 | Clean separation of reads and writes (CQRS) so each side can scale | Distributed workers (designed for, not built — see §8) |
 
 ---
@@ -27,6 +28,8 @@ that answers **only from those documents** and cites the passages it used.
 
 ```mermaid
 flowchart LR
+    Browser((Browser)) -- "cookie (HttpOnly)" --> Web[DocuMind.Web<br/>MVC controllers + Razor views]
+    Web -- "HTTP + bearer token" --> Api
     Api[DocuMind.Api<br/>Minimal APIs, SSE, ProblemDetails] --> App
     Infra[DocuMind.Infrastructure<br/>EF Core, SQL Server 2025, Claude, Voyage, PdfPig] --> App
     App[DocuMind.Application<br/>Commands, Queries, Handlers, Ports] --> Domain[DocuMind.Domain<br/>Aggregates & invariants]
@@ -328,6 +331,24 @@ sequenceDiagram
 | GET | `/health`, `/openapi/v1.json`, `/scalar` | — | Health, OpenAPI, interactive docs |
 
 Errors are RFC 9457 ProblemDetails: validation → 400, not found → 404, domain rule → 409.
+
+### 7.1 Web app (`DocuMind.Web`)
+
+A separate ASP.NET Core **MVC** application — controllers plus Razor `.cshtml` views (Bootstrap 5) — that
+is a pure client of the REST API. It holds no database connection and no business rules: every page
+calls the API through a typed `HttpClient` (`DocuMindApiClient`), and the API enforces every permission,
+so hiding a button in a view is only a convenience.
+
+| Concern | How |
+|---|---|
+| Screens | Sign in / register / account (change password, sign out everywhere); projects; project workspace (folder tree, collections, filterable/sortable/paged document table, batch upload with live status, rename, move, reprocess, delete); document page (inline viewer for PDF/TXT/MD, extracted text for all formats, download); members; collection sharing; admin users; audit log |
+| Sign-in | The browser gets only the web app's own cookie (`DocuMind.Auth`: HttpOnly, SameSite=Lax, Data-Protection encrypted). The API's access token and refresh token live **inside** that cookie's encrypted properties — never visible to page scripts. The API returns its refresh token as a `Set-Cookie`, which `ApiSession` reads server-side. |
+| Token refresh | `ApiCookieEvents.ValidatePrincipal` refreshes the access token ~2 min before expiry. Refreshes are serialized per refresh token and their result cached for 60 s, so parallel requests from one browser never rotate the same token twice (the API would read that as theft and revoke the session). A failed refresh signs the user out. |
+| Role changes | The refreshed principal is rebuilt from the API's user, so an Admin's role change reaches the web UI on the next refresh; the API itself applies it within seconds. |
+| Forms | Plain HTML form posts. `AutoValidateAntiforgeryToken` is global, and `AntiforgeryFormTagHelper` adds the token to every `method="post"` form (the built-in helper only does so for `asp-*`-routed forms). |
+| Errors | `ApiExceptionFilter`: API 401 → sign out and go to login; failed form post → flash message on the page it came from; failed page → friendly 403/404/502 page with the matching status code. |
+| Files | Downloads and the inline viewer are proxied (the browser has no API token). Inline text is served with `Content-Security-Policy: sandbox`; PDFs without it (browsers won't run their PDF viewer sandboxed) but with a server-chosen `application/pdf` type and `nosniff`. |
+| Client IP | The web app forwards the user's IP in `X-Forwarded-For` and their User-Agent; the API trusts forwarded headers from loopback only (or `ForwardedHeaders:KnownProxies`), so rate limiting and the audit log see the real user. |
 
 ---
 

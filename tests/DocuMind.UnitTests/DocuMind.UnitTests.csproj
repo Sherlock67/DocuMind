@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DocuMind.Application\DocuMind.Application.csproj" />
     <ProjectReference Include="..\..\src\DocuMind.Infrastructure\DocuMind.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\DocuMind.Web\DocuMind.Web.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,66 @@
+@model UploadResultViewModel
+@{
+    ViewData["Title"] = "Upload results";
+    var r = Model.Result;
+    var waiting = r.Items.Any(i => i.Status is DocumentStatus.Queued or DocumentStatus.Processing);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small mb-2">
+        <li class="breadcrumb-item"><a href="/">Projects</a></li>
+        <li class="breadcrumb-item"><a href="/projects/@Model.Project.Id">@Model.Project.Name</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Upload</li>
+    </ol>
+</nav>
+
+<div class="card shadow-sm" data-status-poll>
+    <div class="card-header bg-white d-flex flex-wrap align-items-center gap-2">
+        <h1 class="h5 mb-0 me-auto"><i class="bi bi-cloud-check"></i> Uploaded to @Model.Destination</h1>
+        <span class="badge text-bg-success">@r.Accepted accepted</span>
+        <span class="badge text-bg-info">@r.Duplicates duplicate@(r.Duplicates == 1 ? "" : "s")</span>
+        <span class="badge text-bg-danger">@r.Rejected rejected</span>
+        @if (waiting)
+        {
+            <span data-poll-spinner class="small text-body-secondary"><span class="spinner-border spinner-border-sm"></span> processing…</span>
+        }
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead class="table-light small"><tr><th>File</th><th>Upload</th><th>Processing</th></tr></thead>
+            <tbody>
+                @foreach (var item in r.Items)
+                {
+                    <tr>
+                        <td>
+                            <i class="bi @Format.FileIcon(item.FileName)"></i>
+                            @if (item.DocumentId is { } id)
+                            {
+                                <a href="/documents/@id">@item.FileName</a>
+                            }
+                            else
+                            {
+                                @item.FileName
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @(item.Outcome switch { UploadOutcome.Accepted => "text-bg-success", UploadOutcome.Duplicate => "text-bg-info", _ => "text-bg-danger" })">@item.Outcome</span>
+                            @if (item.Error is { } error)
+                            {
+                                <div class="small text-body-secondary">@error</div>
+                            }
+                        </td>
+                        <td>
+                            @if (item is { DocumentId: { } docId, Status: { } status })
+                            {
+                                <span class="badge @Format.StatusBadge(status)" data-document-id="@docId" data-status="@status">@status</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white">
+        <a class="btn btn-primary" href="/projects/@Model.Project.Id"><i class="bi bi-arrow-left"></i> Back to @Model.Project.Name</a>
+    </div>
+</div>

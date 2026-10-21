@@ -1,0 +1,192 @@
+@model DocumentDetailsViewModel
+@{
+    var d = Model.Document;
+    var a = Model.Access;
+    var preview = Model.Preview;
+    var here = $"/documents/{d.Id}";
+    var inline = Format.CanViewInline(d.FileName);
+    ViewData["Title"] = d.FileName;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small mb-2">
+        <li class="breadcrumb-item"><a href="/">Projects</a></li>
+        <li class="breadcrumb-item"><a href="/projects/@Model.Project.Id">@Model.Project.Name</a></li>
+        @if (d.FolderId is { } fid && Model.FolderPath is { } path)
+        {
+            <li class="breadcrumb-item"><a href="/projects/@Model.Project.Id?folder=@fid">@path</a></li>
+        }
+        <li class="breadcrumb-item active truncate" aria-current="page">@d.FileName</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap align-items-start gap-3 mb-4">
+    <h1 class="h4 mb-0 me-auto d-flex align-items-center gap-2 min-w-0">
+        <i class="bi @Format.FileIcon(d.FileName)"></i> <span class="truncate">@d.FileName</span>
+        <span class="badge @Format.StatusBadge(d.Status) fs-6 fw-normal">@d.Status</span>
+    </h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="/documents/@d.Id/download"><i class="bi bi-download"></i> Download</a>
+        @if (Model.ManageableCollections.Count > 0)
+        {
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addToCollectionModal"><i class="bi bi-collection"></i> Add to collection</button>
+        }
+        @if (a.CanEdit)
+        {
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#renameModal"><i class="bi bi-pencil"></i> Rename</button>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#moveModal"><i class="bi bi-arrows-move"></i> Move</button>
+            @if (d.Status is DocumentStatus.Completed or DocumentStatus.Failed)
+            {
+                <form method="post" action="/documents/@d.Id/reprocess">
+                    <input type="hidden" name="returnUrl" value="@here" />
+                    <button class="btn btn-outline-secondary"><i class="bi bi-arrow-repeat"></i> Reprocess</button>
+                </form>
+            }
+            <form method="post" action="/documents/@d.Id/delete" onsubmit="return confirm('Delete “@d.FileName”? This cannot be undone.');">
+                <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (d.Status == DocumentStatus.Failed && d.FailureReason is { } reason)
+{
+    <div class="alert alert-danger"><b>Processing failed:</b> @reason @(a.CanEdit ? "Fix the cause, then use Reprocess." : "")</div>
+}
+else if (d.Status is DocumentStatus.Queued or DocumentStatus.Processing)
+{
+    <div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> This document is being processed. <a href="@here">Refresh</a> to update.</div>
+}
+
+<div class="row g-4">
+    <div class="col-xl-9">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(inline ? "active" : "")" data-bs-toggle="tab" data-bs-target="#viewerTab" type="button" role="tab" disabled="@(!inline)">
+                    <i class="bi bi-file-earmark-richtext"></i> Original
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(inline ? "" : "active")" data-bs-toggle="tab" data-bs-target="#textTab" type="button" role="tab">
+                    <i class="bi bi-text-paragraph"></i> Extracted text @(preview is null ? "" : $"({preview.TotalSections} section{(preview.TotalSections == 1 ? "" : "s")})")
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content border border-top-0 rounded-bottom bg-white p-3">
+            <div class="tab-pane fade @(inline ? "show active" : "")" id="viewerTab" role="tabpanel">
+                @if (inline)
+                {
+                    <iframe class="doc-viewer" src="/documents/@d.Id/inline" title="@d.FileName"></iframe>
+                }
+            </div>
+            <div class="tab-pane fade @(inline ? "" : "show active")" id="textTab" role="tabpanel">
+                @if (!inline)
+                {
+                    <p class="small text-body-secondary">Word documents can't be displayed in the browser — here is the text DocuMind extracted. Use Download for the original.</p>
+                }
+                @if (preview is null || preview.Sections.Count == 0)
+                {
+                    <p class="text-body-secondary mb-0">Extracted text becomes available once processing completes.</p>
+                }
+                else
+                {
+                    @foreach (var s in preview.Sections)
+                    {
+                        <div class="mb-4">
+                            <div class="small fw-semibold text-body-secondary mb-1">@(s.PageNumber is { } n ? $"Page {n}" : $"Section {s.SectionIndex + 1}")</div>
+                            <pre class="preview-text">@s.Text</pre>
+                        </div>
+                    }
+                    var totalPages = (int)Math.Ceiling(preview.TotalSections / (double)preview.PageSize);
+                    @if (totalPages > 1)
+                    {
+                        <nav aria-label="Text pages">
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(preview.Page <= 1 ? "disabled" : "")"><a class="page-link" href="@here?page=@(preview.Page - 1)#textTab">Previous</a></li>
+                                <li class="page-item disabled"><span class="page-link">@preview.Page of @totalPages</span></li>
+                                <li class="page-item @(preview.Page >= totalPages ? "disabled" : "")"><a class="page-link" href="@here?page=@(preview.Page + 1)#textTab">Next</a></li>
+                            </ul>
+                        </nav>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3">
+        <div class="card shadow-sm">
+            <div class="card-body small">
+                <h2 class="h6 text-uppercase text-body-secondary">Details</h2>
+                <dl class="row mb-0">
+                    <dt class="col-5">Size</dt><dd class="col-7">@Format.Bytes(d.SizeBytes)</dd>
+                    <dt class="col-5">Type</dt><dd class="col-7">@System.IO.Path.GetExtension(d.FileName).TrimStart('.').ToUpperInvariant()</dd>
+                    <dt class="col-5">Folder</dt><dd class="col-7">@(Model.FolderPath ?? "Project root")</dd>
+                    <dt class="col-5">Pages</dt><dd class="col-7">@(d.PageCount > 0 ? d.PageCount : "—")</dd>
+                    <dt class="col-5">Chunks</dt><dd class="col-7">@d.ChunkCount</dd>
+                    <dt class="col-5">Uploaded</dt><dd class="col-7">@Format.When(d.UploadedAt)</dd>
+                    <dt class="col-5">Processed</dt><dd class="col-7">@Format.When(d.ProcessedAt)</dd>
+                    <dt class="col-5">Your access</dt><dd class="col-7"><span class="badge @Format.RoleBadge(Model.Project.MyRole)">@(Model.Project.MyRole?.ToString() ?? (a.IsAdmin ? "Admin" : "Shared collection"))</span></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (a.CanEdit)
+{
+    <div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="post" action="/documents/@d.Id/rename" class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h5">Rename document</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <input type="hidden" name="returnUrl" value="@here" />
+                    <input name="fileName" class="form-control" required maxlength="255" value="@d.FileName" aria-label="File name" />
+                    <div class="form-text">The file extension is kept.</div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Rename</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="moveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <form method="post" action="/documents/@d.Id/move" class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h5">Move document</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <input type="hidden" name="returnUrl" value="@here" />
+                    <select name="folderId" class="form-select" aria-label="Destination folder">
+                        <option value="">Project root</option>
+                        @foreach (var o in Model.FolderOptions)
+                        {
+                            <option value="@o.Id" selected="@(d.FolderId == o.Id)">@o.Path</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Move</button></div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.ManageableCollections.Count > 0)
+{
+    <div class="modal fade" id="addToCollectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <form method="post" class="modal-content" onsubmit="this.action='/collections/' + this.elements.collection.value + '/documents';">
+                <div class="modal-header"><h2 class="modal-title h5">Add to collection</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <input type="hidden" name="documentId" value="@d.Id" />
+                    <input type="hidden" name="returnUrl" value="@here" />
+                    <select name="collection" class="form-select" aria-label="Collection">
+                        @foreach (var c in Model.ManageableCollections)
+                        {
+                            <option value="@c.Id">@c.Name (@c.Visibility.ToString().ToLowerInvariant())</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Add</button></div>
+            </form>
+        </div>
+    </div>
+}

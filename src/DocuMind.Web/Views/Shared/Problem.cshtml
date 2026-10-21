@@ -1,0 +1,18 @@
+@model ProblemViewModel
+@{
+    var (icon, title) = (int)Model.Status switch
+    {
+        403 => ("bi-shield-lock", "You don't have access"),
+        404 => ("bi-search", "Not found"),
+        502 => ("bi-plug", "Service unavailable"),
+        _ => ("bi-exclamation-octagon", "Something went wrong"),
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="text-center py-5">
+    <i class="bi @icon display-4 text-body-secondary"></i>
+    <h1 class="h4 mt-3">@title</h1>
+    <p class="text-body-secondary">@Model.Message</p>
+    <a href="/" class="btn btn-outline-primary mt-2"><i class="bi bi-arrow-left"></i> Back to projects</a>
+</div>

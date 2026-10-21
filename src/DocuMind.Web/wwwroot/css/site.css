@@ -1,0 +1,83 @@
+:root {
+    --bs-primary: #3949ab;
+    --bs-primary-rgb: 57, 73, 171;
+    --bs-link-color: #3949ab;
+    --bs-link-color-rgb: 57, 73, 171;
+}
+
+html { font-size: 15px; }
+
+body { min-height: 100vh; }
+
+.btn-primary {
+    --bs-btn-bg: #3949ab;
+    --bs-btn-border-color: #3949ab;
+    --bs-btn-hover-bg: #303f9f;
+    --bs-btn-hover-border-color: #303f9f;
+    --bs-btn-active-bg: #283593;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #3949ab;
+    --bs-btn-border-color: #3949ab;
+    --bs-btn-hover-bg: #3949ab;
+    --bs-btn-hover-border-color: #3949ab;
+}
+
+.text-bg-primary { background-color: #3949ab !important; }
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #3949ab;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+/* ----- Sign-in pages ----- */
+.auth-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: radial-gradient(circle at 20% 20%, #e8eaf6 0, #f6f7fb 45%, #f6f7fb 100%);
+}
+
+.auth-card { width: 100%; max-width: 440px; }
+
+/* ----- Projects ----- */
+.project-card { transition: box-shadow .12s ease, transform .12s ease; }
+.project-card:hover { box-shadow: 0 .5rem 1.25rem rgba(31, 33, 64, .12) !important; transform: translateY(-1px); }
+
+/* ----- Workspace ----- */
+.side-nav .list-group-item { border: 0; border-radius: .375rem !important; padding: .4rem .6rem; }
+.side-nav .list-group-item.active { background: #e8eaf6; color: #1f2140; font-weight: 600; }
+.side-nav .count { font-size: .75rem; color: var(--bs-secondary-color); }
+
+.folder-tree { list-style: none; padding-left: 0; margin: 0; }
+.folder-tree .folder-tree { padding-left: 1rem; border-left: 1px dashed #dadcea; margin-left: .55rem; }
+
+.doc-table td { vertical-align: middle; }
+.doc-name { max-width: 420px; }
+
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ----- Document page ----- */
+.doc-viewer { width: 100%; height: 75vh; border: 1px solid #dee2e6; border-radius: .5rem; background: #fff; }
+
+.preview-text {
+    white-space: pre-wrap;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: .85rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.audit-details { font-size: .8rem; }
+.audit-details code { color: #5c6080; }

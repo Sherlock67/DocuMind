@@ -5,6 +5,7 @@ using DocuMind.Application;
 using DocuMind.Application.Common.Options;
 using DocuMind.Infrastructure;
 using DocuMind.Infrastructure.Persistence;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -35,7 +36,19 @@ builder.Services.Configure<FormOptions>(o =>
 });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = maxRequest);
 
+// The MVC web app (DocuMind.Web) calls this API on behalf of browser users and forwards their IP in
+// X-Forwarded-For, so rate limiting and the audit log see the real user, not the web server.
+// Only loopback proxies are trusted by default; add others under ForwardedHeaders:KnownProxies.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+        o.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {

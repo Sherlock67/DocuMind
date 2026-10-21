@@ -1,0 +1,71 @@
+@model SharesViewModel
+@{
+    var c = Model.Collection;
+    var p = Model.Project;
+    ViewData["Title"] = $"Share · {c.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small mb-2">
+        <li class="breadcrumb-item"><a href="/">Projects</a></li>
+        <li class="breadcrumb-item"><a href="/projects/@p.Id">@p.Name</a></li>
+        <li class="breadcrumb-item"><a href="/projects/@p.Id?collection=@c.Id">@c.Name</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Sharing</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-1"><i class="bi bi-share"></i> Share “@c.Name”</h1>
+<p class="text-body-secondary mb-4">
+    People you share this collection with can see it and <b>read the @c.DocumentCount document@(c.DocumentCount == 1 ? "" : "s") in it</b>
+    — even if they aren't members of @p.Name. They can't change or delete anything.
+</p>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-semibold">Shared with</div>
+            @if (Model.Shares.Count == 0)
+            {
+                <div class="card-body text-body-secondary">Nobody yet. @(c.Visibility == CollectionVisibility.Project ? "Project members can already see it." : "Only you can see it.")</div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var s in Model.Shares)
+                    {
+                        <li class="list-group-item d-flex align-items-center gap-3">
+                            <i class="bi bi-person-circle fs-4 text-body-secondary"></i>
+                            <div class="me-auto">
+                                <div class="fw-semibold">@s.DisplayName</div>
+                                <div class="small text-body-secondary">@s.Email · shared @Format.When(s.SharedAt)</div>
+                            </div>
+                            @if (!s.IsProjectMember)
+                            {
+                                <span class="badge text-bg-warning">outside project</span>
+                            }
+                            <form method="post" action="/collections/@c.Id/shares/@s.UserId/remove">
+                                <button class="btn btn-sm btn-outline-danger" aria-label="Stop sharing with @s.DisplayName"><i class="bi bi-x-lg"></i></button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 mb-3"><i class="bi bi-person-plus"></i> Share with someone</h2>
+                <form method="post" action="/collections/@c.Id/shares">
+                    <label class="form-label small" for="shareEmail">Email address</label>
+                    <input id="shareEmail" name="email" type="email" class="form-control mb-3" required />
+                    <button type="submit" class="btn btn-primary w-100">Share</button>
+                </form>
+                @if (!Model.Access.IsOwner)
+                {
+                    <p class="form-text mt-3 mb-0">You can share with members of this project. Sharing with people outside it requires the project Owner role.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

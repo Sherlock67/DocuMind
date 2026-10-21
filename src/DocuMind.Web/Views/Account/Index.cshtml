@@ -1,0 +1,72 @@
+@model AccountViewModel
+@{
+    ViewData["Title"] = "Account";
+    var u = Model.User;
+}
+
+<h1 class="h3 mb-4">Account</h1>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-body-secondary mb-3">Profile</h2>
+                <dl class="row mb-0">
+                    <dt class="col-4">Name</dt><dd class="col-8">@u.DisplayName</dd>
+                    <dt class="col-4">Email</dt><dd class="col-8">@u.Email</dd>
+                    <dt class="col-4">Role</dt>
+                    <dd class="col-8">
+                        <span class="badge text-bg-primary">@u.Role</span>
+                        <div class="small text-body-secondary mt-1">
+                            @(u.Role switch
+                            {
+                                UserRole.Admin => "Full access to every project, user administration and the audit log.",
+                                UserRole.Manager => "Can create projects and share them with others.",
+                                _ => "Works in projects and collections shared with you.",
+                            })
+                        </div>
+                    </dd>
+                    <dt class="col-4">Member since</dt><dd class="col-8">@Format.When(u.CreatedAt)</dd>
+                    <dt class="col-4">Last sign-in</dt><dd class="col-8">@Format.When(u.LastLoginAt)</dd>
+                </dl>
+                <hr />
+                <h2 class="h6 text-uppercase text-body-secondary mb-2">Sessions</h2>
+                <p class="small text-body-secondary">Signs you out on every browser and device, including this one.</p>
+                <form method="post" asp-action="LogoutEverywhere" onsubmit="return confirm('Sign out on every device?');">
+                    <button type="submit" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right"></i> Sign out everywhere</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-body-secondary mb-3">Change password</h2>
+                <form method="post" asp-action="ChangePassword" novalidate style="max-width:420px">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.CurrentPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.CurrentPassword" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="ChangePassword.CurrentPassword" class="invalid-feedback d-block"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.NewPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.NewPassword" class="form-control" autocomplete="new-password" />
+                        <div class="form-text">At least 10 characters, with upper- and lower-case letters and a digit.</div>
+                        <span asp-validation-for="ChangePassword.NewPassword" class="invalid-feedback d-block"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="ChangePassword.ConfirmPassword" class="form-label"></label>
+                        <input asp-for="ChangePassword.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                        <span asp-validation-for="ChangePassword.ConfirmPassword" class="invalid-feedback d-block"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Change password</button>
+                    <div class="form-text mt-2">Other devices are signed out when your password changes.</div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
